@@ -1,5 +1,7 @@
 # AI Money Loop System
 
+[![CI](https://github.com/ivartammela001-a11y/moneyloop/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/ivartammela001-a11y/moneyloop/actions/workflows/tests.yml?query=branch%3Amain)
+
 A complete AI-powered digital product creation and sales automation system with 3-layer investment strategy.
 
 ## 🚀 Quick Start
