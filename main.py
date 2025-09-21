@@ -502,7 +502,7 @@ def run_dashboard():
         else:
             st.info("🎭 Demo Mode: Simulated responses")
 
-    # Enhanced Investment Tracker
+    # Enhanced Investment Tracker with Real Data
     df_tracker = pd.DataFrame(investment_tracker)
     df_tracker['ROI (%)'] = ((df_tracker['actual_profit'] - df_tracker['starting_capital']) / df_tracker['starting_capital'] * 100).round(2)
     df_tracker['Total Revenue'] = df_tracker.get('total_revenue', 0)
@@ -510,17 +510,27 @@ def run_dashboard():
 
     st.subheader('📊 Investment Tracker')
     
-    # Key Metrics
+    # Add real-time data refresh button
+    if st.button("🔄 Refresh Real Data"):
+        st.rerun()
+    
+    # Key Metrics with Real vs Simulated indicators
     col1, col2, col3, col4 = st.columns(4)
     with col1:
-        st.metric("Total Profit", f"€{df_tracker['actual_profit'].sum():.2f}")
+        total_profit = df_tracker['actual_profit'].sum()
+        profit_type = "💰 REAL" if total_profit > 0 else "🎭 SIMULATED"
+        st.metric("Total Profit", f"€{total_profit:.2f}", help=profit_type)
     with col2:
-        st.metric("Total Revenue", f"€{df_tracker['Total Revenue'].sum():.2f}")
+        total_revenue = df_tracker['Total Revenue'].sum()
+        revenue_type = "💰 REAL" if total_revenue > 0 else "🎭 SIMULATED"
+        st.metric("Total Revenue", f"€{total_revenue:.2f}", help=revenue_type)
     with col3:
-        st.metric("Total Cost", f"€{df_tracker['Total Cost'].sum():.2f}")
+        total_cost = df_tracker['Total Cost'].sum()
+        st.metric("Total Cost", f"€{total_cost:.2f}")
     with col4:
         avg_roi = df_tracker['ROI (%)'].mean()
-        st.metric("Avg ROI", f"{avg_roi:.1f}%")
+        roi_type = "💰 REAL" if avg_roi > 0 else "🎭 SIMULATED"
+        st.metric("Avg ROI", f"{avg_roi:.1f}%", help=roi_type)
     
     # Detailed tracker table
     st.dataframe(df_tracker[['layer', 'platform', 'starting_capital', 'actual_profit', 'ROI (%)', 'Total Revenue', 'Total Cost']])
@@ -576,6 +586,41 @@ def run_dashboard():
     # Add real sales monitoring
     check_real_sales()
     
+    # Real Investment Tracker Section
+    st.subheader('🎯 Real Investment Tracker')
+    
+    # Get real sales data
+    real_etsy_sales = get_etsy_sales()
+    real_gumroad_sales = get_gumroad_sales()
+    real_shopify_sales = get_shopify_sales()
+    
+    # Create real investment tracker
+    real_investment_tracker = [
+        {'layer': 1, 'platform': 'Etsy', 'starting_capital': 50, 'real_profit': real_etsy_sales, 'real_roi': ((real_etsy_sales - 50) / 50 * 100) if real_etsy_sales > 0 else 0},
+        {'layer': 2, 'platform': 'Gumroad', 'starting_capital': 250, 'real_profit': real_gumroad_sales, 'real_roi': ((real_gumroad_sales - 250) / 250 * 100) if real_gumroad_sales > 0 else 0},
+        {'layer': 3, 'platform': 'Shopify', 'starting_capital': 1000, 'real_profit': real_shopify_sales, 'real_roi': ((real_shopify_sales - 1000) / 1000 * 100) if real_shopify_sales > 0 else 0}
+    ]
+    
+    # Display real metrics
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        total_real_profit = real_etsy_sales + real_gumroad_sales + real_shopify_sales
+        st.metric("💰 Real Total Profit", f"€{total_real_profit:.2f}")
+    with col2:
+        st.metric("🛍️ Etsy Sales", f"€{real_etsy_sales:.2f}")
+    with col3:
+        st.metric("📚 Gumroad Sales", f"€{real_gumroad_sales:.2f}")
+    with col4:
+        st.metric("🏪 Shopify Sales", f"€{real_shopify_sales:.2f}")
+    
+    # Real investment tracker table
+    if total_real_profit > 0:
+        st.success("🎉 **Real sales detected!** Your investment tracker now shows actual numbers.")
+        real_df = pd.DataFrame(real_investment_tracker)
+        st.dataframe(real_df[['layer', 'platform', 'starting_capital', 'real_profit', 'real_roi']])
+    else:
+        st.info("ℹ️ No real sales detected yet. The tracker shows simulated data until you make actual sales.")
+    
     # Add automation scheduler
     schedule_automation()
 
@@ -610,25 +655,55 @@ def run_recurring(simulation_interval_hours=24):
         time.sleep(simulation_interval_hours * 3600)
 
 def check_real_sales():
-    """Check for real sales from platforms"""
+    """Check for real sales from platforms and update investment tracker"""
     st.subheader('💰 Real Sales Monitoring')
     
     col1, col2, col3 = st.columns(3)
     
+    # Get real sales data
+    etsy_sales = get_etsy_sales()
+    gumroad_sales = get_gumroad_sales()
+    shopify_sales = get_shopify_sales()
+    
     with col1:
         if st.button("🔄 Check Etsy Sales"):
-            etsy_sales = get_etsy_sales()
             st.metric("Etsy Sales Today", f"€{etsy_sales:.2f}")
+            # Update investment tracker with real data
+            if etsy_sales > 0:
+                investment_tracker[0]['actual_profit'] = etsy_sales
+                st.success(f"✅ Updated Layer 1 with real Etsy sales: €{etsy_sales:.2f}")
     
     with col2:
         if st.button("🔄 Check Gumroad Sales"):
-            gumroad_sales = get_gumroad_sales()
             st.metric("Gumroad Sales Today", f"€{gumroad_sales:.2f}")
+            # Update investment tracker with real data
+            if gumroad_sales > 0:
+                investment_tracker[1]['actual_profit'] = gumroad_sales
+                st.success(f"✅ Updated Layer 2 with real Gumroad sales: €{gumroad_sales:.2f}")
     
     with col3:
         if st.button("🔄 Check Shopify Sales"):
-            shopify_sales = get_shopify_sales()
             st.metric("Shopify Sales Today", f"€{shopify_sales:.2f}")
+            # Update investment tracker with real data
+            if shopify_sales > 0:
+                investment_tracker[2]['actual_profit'] = shopify_sales
+                st.success(f"✅ Updated Layer 3 with real Shopify sales: €{shopify_sales:.2f}")
+    
+    # Show total real sales
+    total_real_sales = etsy_sales + gumroad_sales + shopify_sales
+    if total_real_sales > 0:
+        st.success(f"🎯 **Total Real Sales Today: €{total_real_sales:.2f}**")
+        
+        # Update all layers with real data
+        investment_tracker[0]['actual_profit'] = etsy_sales
+        investment_tracker[1]['actual_profit'] = gumroad_sales  
+        investment_tracker[2]['actual_profit'] = shopify_sales
+        
+        # Calculate real ROI
+        for i, layer in enumerate(investment_tracker):
+            if layer['actual_profit'] > 0:
+                layer['ROI'] = ((layer['actual_profit'] - layer['starting_capital']) / layer['starting_capital'] * 100)
+                st.info(f"Layer {i+1} Real ROI: {layer['ROI']:.1f}%")
 
 def get_etsy_sales():
     """Get real sales data from Etsy"""
