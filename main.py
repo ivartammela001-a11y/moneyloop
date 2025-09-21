@@ -302,12 +302,31 @@ def generate_product_content(niche, product_type):
         'description': f"Create a compelling product description for a {niche} {product_type}. Include benefits, features, and call-to-action. Keep it under 200 words.",
         'title': f"Create an SEO-optimized title for a {niche} {product_type}. Make it catchy and searchable.",
         'tags': f"Generate 10 relevant hashtags for a {niche} {product_type} for social media marketing.",
-        'pricing': f"Suggest competitive pricing strategy for a {niche} {product_type} digital product."
+        'pricing': f"Suggest competitive pricing strategy for a {niche} {product_type} digital product.",
+        'recommended_price': f"Analyze the market and recommend the optimal sale price for a {niche} {product_type} digital product. Consider competition, value, and profit margins. Return only a number (e.g., 12.99)."
     }
     
     content = {}
     for key, prompt in prompts.items():
         content[key] = generate_ai_text(prompt)
+    
+    # Parse recommended price and add pricing analysis
+    try:
+        recommended_price = float(content['recommended_price'].replace('$', '').replace('€', '').strip())
+        content['recommended_price'] = recommended_price
+        content['pricing_analysis'] = f"Recommended price: €{recommended_price:.2f} based on market analysis"
+    except:
+        # Fallback pricing based on product type
+        base_prices = {
+            'printable': 9.99,
+            'template': 14.99,
+            'planner': 19.99,
+            'ebook': 24.99,
+            'course': 49.99
+        }
+        recommended_price = base_prices.get(product_type.lower(), 12.99)
+        content['recommended_price'] = recommended_price
+        content['pricing_analysis'] = f"Recommended price: €{recommended_price:.2f} (default pricing)"
     
     return content
 
@@ -331,11 +350,13 @@ def simulate_layer(layer):
             ai_cost = 0.02 if OPENAI_API_KEY and OPENAI_API_KEY != 'demo_key' else 0
             product_cost = base_cost + ai_cost
             
-            # Simulate sales based on layer
+            # Use AI-recommended price for revenue calculation
+            recommended_price = content.get('recommended_price', 12.99)
+            
+            # Simulate sales based on layer and price
             sales_multiplier = layer['layer'] * 0.5 + 0.5
             potential_sales = random.randint(10, 50) * sales_multiplier
-            price_per_unit = random.uniform(5, 25)
-            revenue = potential_sales * price_per_unit
+            revenue = potential_sales * recommended_price
             
             product_data = {
                 'name': product['product'],
@@ -345,7 +366,9 @@ def simulate_layer(layer):
                 'cost': product_cost,
                 'revenue': revenue,
                 'profit': revenue - product_cost,
-                'platform': layer['platform']
+                'platform': layer['platform'],
+                'recommended_price': recommended_price,
+                'potential_sales': potential_sales
             }
             
             generated_products.append(product_data)
@@ -559,9 +582,17 @@ def run_dashboard():
                     
                     with col1:
                         st.image(product['image_url'], width=200)
+                        
+                        # Pricing section with recommended price
+                        st.markdown("### 💰 Pricing Analysis")
+                        st.metric("🎯 Recommended Price", f"€{product['recommended_price']:.2f}")
+                        st.metric("📊 Potential Sales", f"{product['potential_sales']:.0f} units")
+                        st.metric("💵 Total Revenue", f"€{product['revenue']:.2f}")
+                        
+                        st.markdown("### 📈 Financials")
                         st.write(f"**Cost:** €{product['cost']:.2f}")
-                        st.write(f"**Revenue:** €{product['revenue']:.2f}")
                         st.write(f"**Profit:** €{product['profit']:.2f}")
+                        st.write(f"**Profit Margin:** {((product['profit'] / product['revenue']) * 100):.1f}%")
                     
                     with col2:
                         st.write("**Title:**")
@@ -572,6 +603,8 @@ def run_dashboard():
                         st.write(product['content']['tags'])
                         st.write("**Pricing Strategy:**")
                         st.write(product['content']['pricing'])
+                        st.write("**AI Price Analysis:**")
+                        st.write(product['content']['pricing_analysis'])
 
     current_capital = df_tracker['actual_profit'].max()
     layer_name, action = next_layer(current_capital), ''
@@ -620,6 +653,34 @@ def run_dashboard():
         st.dataframe(real_df[['layer', 'platform', 'starting_capital', 'real_profit', 'real_roi']])
     else:
         st.info("ℹ️ No real sales detected yet. The tracker shows simulated data until you make actual sales.")
+    
+    # Pricing Optimization Section
+    st.subheader('🎯 Pricing Optimization')
+    
+    # Show pricing recommendations for each platform
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        st.markdown("### 🛍️ Etsy Pricing")
+        st.info("**Recommended Range:** €8.99 - €15.99\n\n**Best Sellers:** €9.99 - €12.99\n\n**Premium Products:** €14.99 - €19.99")
+    
+    with col2:
+        st.markdown("### 📚 Gumroad Pricing")
+        st.info("**Recommended Range:** €9.99 - €24.99\n\n**Digital Downloads:** €9.99 - €14.99\n\n**E-books/Courses:** €19.99 - €49.99")
+    
+    with col3:
+        st.markdown("### 🏪 Shopify Pricing")
+        st.info("**Recommended Range:** €12.99 - €29.99\n\n**Printables:** €12.99 - €19.99\n\n**Bundles:** €24.99 - €49.99")
+    
+    # Pricing strategy tips
+    st.markdown("### 💡 Pricing Strategy Tips")
+    st.markdown("""
+    - **Start Higher:** You can always lower prices, but raising them is harder
+    - **Test Different Prices:** A/B test €9.99 vs €12.99 to find optimal price
+    - **Bundle Strategy:** Offer multiple products together for better value
+    - **Psychological Pricing:** Use €11.99 instead of €12.00
+    - **Seasonal Pricing:** Adjust prices based on demand seasons
+    """)
     
     # Add automation scheduler
     schedule_automation()
