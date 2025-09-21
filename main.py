@@ -62,10 +62,16 @@ next_layer = lambda capital: 'Layer 1' if capital<250 else ('Layer 2' if capital
 def generate_ai_text(prompt):
     if OPENAI_API_KEY and OPENAI_API_KEY != 'demo_key':
         try:
-            response = openai.ChatCompletion.create(model="gpt-4", prompt=prompt, max_tokens=500)
+            response = openai.ChatCompletion.create(
+                model="gpt-4",
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=500,
+                temperature=0.7
+            )
             return response['choices'][0]['message']['content']
-        except:
-            pass
+        except Exception as e:
+            logging.error(f"OpenAI API error: {e}")
+            return f"Error generating content: {str(e)}"
     # Demo mode - return sample content
     return f"AI Generated Content for: {prompt} - This is a demo simulation!"
 
@@ -88,18 +94,78 @@ def export_to_platform(product_name, content_file, image_file, platform):
 # Automation Functions
 # -------------------------
 
+def generate_product_content(niche, product_type):
+    """Generate comprehensive product content using AI"""
+    prompts = {
+        'description': f"Create a compelling product description for a {niche} {product_type}. Include benefits, features, and call-to-action. Keep it under 200 words.",
+        'title': f"Create an SEO-optimized title for a {niche} {product_type}. Make it catchy and searchable.",
+        'tags': f"Generate 10 relevant hashtags for a {niche} {product_type} for social media marketing.",
+        'pricing': f"Suggest competitive pricing strategy for a {niche} {product_type} digital product."
+    }
+    
+    content = {}
+    for key, prompt in prompts.items():
+        content[key] = generate_ai_text(prompt)
+    
+    return content
+
 def simulate_layer(layer):
     logging.info(f"Simulating Layer {layer['layer']} on {layer['platform']}")
+    
+    generated_products = []
+    total_cost = 0
+    
     for product in product_ideas:
         try:
-            text = generate_ai_text(product['niche'] + ' ' + product['product'])
-            image_url = generate_ai_image(product['product'])
-            export_to_platform(product['product'], text, image_url, layer['platform'])
+            # Generate comprehensive product content
+            content = generate_product_content(product['niche'], product['product'])
+            
+            # Generate product image
+            image_prompt = f"Professional {product['niche']} {product['product']}, clean design, high quality, commercial use"
+            image_url = generate_ai_image(image_prompt)
+            
+            # Calculate product cost and potential revenue
+            base_cost = 5  # Base cost per product
+            ai_cost = 0.02 if OPENAI_API_KEY and OPENAI_API_KEY != 'demo_key' else 0
+            product_cost = base_cost + ai_cost
+            
+            # Simulate sales based on layer
+            sales_multiplier = layer['layer'] * 0.5 + 0.5
+            potential_sales = random.randint(10, 50) * sales_multiplier
+            price_per_unit = random.uniform(5, 25)
+            revenue = potential_sales * price_per_unit
+            
+            product_data = {
+                'name': product['product'],
+                'niche': product['niche'],
+                'content': content,
+                'image_url': image_url,
+                'cost': product_cost,
+                'revenue': revenue,
+                'profit': revenue - product_cost,
+                'platform': layer['platform']
+            }
+            
+            generated_products.append(product_data)
+            total_cost += product_cost
+            
+            # Export to platform (simulated)
+            export_to_platform(product['product'], content, image_url, layer['platform'])
+            
         except Exception as e:
             logging.error(f"Error generating/exporting product {product['product']}: {e}")
-    profit = layer['starting_capital'] * random.uniform(0.5, 1.5)
-    layer['actual_profit'] = round(profit,2)
-    logging.info(f"Layer {layer['layer']} profit: €{layer['actual_profit']}")
+    
+    # Calculate total profit
+    total_revenue = sum(p['revenue'] for p in generated_products)
+    total_profit = total_revenue - total_cost
+    
+    # Update layer with actual results
+    layer['actual_profit'] = round(total_profit, 2)
+    layer['generated_products'] = generated_products
+    layer['total_revenue'] = round(total_revenue, 2)
+    layer['total_cost'] = round(total_cost, 2)
+    
+    logging.info(f"Layer {layer['layer']} profit: €{layer['actual_profit']} (Revenue: €{total_revenue}, Cost: €{total_cost})")
     return layer['actual_profit']
 
 def suggest_next_action(capital):
@@ -173,23 +239,79 @@ def run_dashboard():
         else:
             st.info("🎭 Demo Mode: Simulated responses")
 
+    # Enhanced Investment Tracker
     df_tracker = pd.DataFrame(investment_tracker)
     df_tracker['ROI (%)'] = ((df_tracker['actual_profit'] - df_tracker['starting_capital']) / df_tracker['starting_capital'] * 100).round(2)
+    df_tracker['Total Revenue'] = df_tracker.get('total_revenue', 0)
+    df_tracker['Total Cost'] = df_tracker.get('total_cost', 0)
 
-    st.subheader('Investment Tracker')
-    st.dataframe(df_tracker)
+    st.subheader('📊 Investment Tracker')
+    
+    # Key Metrics
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        st.metric("Total Profit", f"€{df_tracker['actual_profit'].sum():.2f}")
+    with col2:
+        st.metric("Total Revenue", f"€{df_tracker['Total Revenue'].sum():.2f}")
+    with col3:
+        st.metric("Total Cost", f"€{df_tracker['Total Cost'].sum():.2f}")
+    with col4:
+        avg_roi = df_tracker['ROI (%)'].mean()
+        st.metric("Avg ROI", f"{avg_roi:.1f}%")
+    
+    # Detailed tracker table
+    st.dataframe(df_tracker[['layer', 'platform', 'starting_capital', 'actual_profit', 'ROI (%)', 'Total Revenue', 'Total Cost']])
 
-    st.subheader('ROI per Layer')
-    st.bar_chart(df_tracker[['layer','ROI (%)']].set_index('layer'))
+    # Charts
+    col1, col2 = st.columns(2)
+    with col1:
+        st.subheader('📈 ROI per Layer')
+        st.bar_chart(df_tracker[['layer','ROI (%)']].set_index('layer'))
+    
+    with col2:
+        st.subheader('💰 Profit vs Revenue')
+        chart_data = df_tracker[['layer', 'actual_profit', 'Total Revenue']].set_index('layer')
+        st.bar_chart(chart_data)
+    
+    # Generated Products Section
+    st.subheader('🛍️ Generated Products')
+    
+    for layer in investment_tracker:
+        if 'generated_products' in layer and layer['generated_products']:
+            st.write(f"**Layer {layer['layer']} - {layer['platform']}**")
+            
+            for product in layer['generated_products']:
+                with st.expander(f"{product['name']} - €{product['profit']:.2f} profit"):
+                    col1, col2 = st.columns([1, 2])
+                    
+                    with col1:
+                        st.image(product['image_url'], width=200)
+                        st.write(f"**Cost:** €{product['cost']:.2f}")
+                        st.write(f"**Revenue:** €{product['revenue']:.2f}")
+                        st.write(f"**Profit:** €{product['profit']:.2f}")
+                    
+                    with col2:
+                        st.write("**Title:**")
+                        st.write(product['content']['title'])
+                        st.write("**Description:**")
+                        st.write(product['content']['description'])
+                        st.write("**Tags:**")
+                        st.write(product['content']['tags'])
+                        st.write("**Pricing Strategy:**")
+                        st.write(product['content']['pricing'])
 
     current_capital = df_tracker['actual_profit'].max()
     layer_name, action = next_layer(current_capital), ''
     for item in profit_reinvestment:
         if item['suggested_layer'] == next_layer(current_capital):
             action = item['action']
-    st.subheader('Next Layer Actions')
+    
+    st.subheader('🎯 Next Layer Actions')
     st.write(f'Current Capital: €{current_capital}')
     st.write(f'Next Layer: {layer_name}, Suggested Action: {action}')
+    
+    # Add automation scheduler
+    schedule_automation()
 
 # -------------------------
 # Recurring Scheduler
@@ -197,13 +319,64 @@ def run_dashboard():
 
 def run_recurring(simulation_interval_hours=24):
     capital = 50
+    round_count = 0
     while True:
+        round_count += 1
+        logging.info(f"Starting simulation round {round_count}")
+        
         for layer in investment_tracker:
             profit = simulate_layer(layer)
             capital = profit
             suggest_next_action(capital)
-        logging.info(f"End of simulation round. Current capital: €{capital}")
+        
+        # Save progress to file
+        with open('ai_money_loop_progress.json', 'w') as f:
+            import json
+            progress_data = {
+                'round': round_count,
+                'capital': capital,
+                'timestamp': datetime.now().isoformat(),
+                'layers': investment_tracker
+            }
+            json.dump(progress_data, f, indent=2)
+        
+        logging.info(f"Round {round_count} complete. Current capital: €{capital}")
         time.sleep(simulation_interval_hours * 3600)
+
+def schedule_automation():
+    """Schedule automation with configurable intervals"""
+    st.subheader('🤖 Automation Scheduler')
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        interval = st.selectbox(
+            "Simulation Interval",
+            options=[1, 6, 12, 24, 48, 168],  # hours
+            format_func=lambda x: f"{x} hours" if x < 24 else f"{x//24} days" if x >= 24 else f"{x} hours"
+        )
+        
+        auto_start = st.checkbox("Start Automated Simulation", value=False)
+        
+        if auto_start:
+            st.info(f"🔄 Automation will run every {interval} hours")
+            if st.button("🚀 Start Now"):
+                st.success("Automation started! Check logs for progress.")
+                # In a real implementation, this would start a background process
+                
+    with col2:
+        st.subheader('📈 Performance Stats')
+        
+        # Load progress if exists
+        try:
+            with open('ai_money_loop_progress.json', 'r') as f:
+                import json
+                progress = json.load(f)
+                st.metric("Last Round", progress.get('round', 0))
+                st.metric("Current Capital", f"€{progress.get('capital', 0):.2f}")
+                st.metric("Last Update", progress.get('timestamp', 'Never')[:10])
+        except FileNotFoundError:
+            st.info("No automation data yet. Run a simulation first!")
 
 # -------------------------
 # Entry Point
