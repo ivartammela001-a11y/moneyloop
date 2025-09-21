@@ -408,7 +408,6 @@ def run_dashboard():
             if st.button("💾 Save All API Keys"):
                 if openai_key:
                     # Update the global variables
-                    global OPENAI_API_KEY, ETSY_API_KEY, GUMROAD_API_KEY, CANVA_API_KEY
                     OPENAI_API_KEY = openai_key
                     ETSY_API_KEY = etsy_key
                     GUMROAD_API_KEY = gumroad_key
@@ -428,7 +427,6 @@ def run_dashboard():
         st.sidebar.write(f"Canva: {'✅' if CANVA_API_KEY != 'demo_key' else '❌'}")
         
         if st.sidebar.button("🔄 Reset All API Keys"):
-            global OPENAI_API_KEY, ETSY_API_KEY, GUMROAD_API_KEY, CANVA_API_KEY
             OPENAI_API_KEY = 'demo_key'
             ETSY_API_KEY = 'demo_key'
             GUMROAD_API_KEY = 'demo_key'
