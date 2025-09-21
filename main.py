@@ -114,18 +114,20 @@ def suggest_next_action(capital):
 # -------------------------
 
 def run_dashboard():
+    global OPENAI_API_KEY
+    
     st.title('💰 AI Money Loop Dashboard')
     st.markdown("---")
     
+    # Check if API keys are already set
+    api_keys_set = OPENAI_API_KEY and OPENAI_API_KEY != 'demo_key'
+    
     # Welcome message for first-time users
-    if not (OPENAI_API_KEY and OPENAI_API_KEY != 'demo_key'):
+    if not api_keys_set:
         st.info("🎯 **Welcome to AI Money Loop!** This system automates digital product creation and sales across multiple platforms. Configure your API keys in the sidebar to unlock full AI functionality.")
     
     # API Keys Configuration Section
     st.sidebar.header('🔑 API Configuration')
-    
-    # Check if API keys are already set
-    api_keys_set = OPENAI_API_KEY and OPENAI_API_KEY != 'demo_key'
     
     if not api_keys_set:
         st.sidebar.warning('⚠️ No API keys detected. Enter your keys below for full functionality.')
@@ -142,7 +144,6 @@ def run_dashboard():
             if st.button("💾 Save API Keys"):
                 if openai_key:
                     # Update the global variable
-                    global OPENAI_API_KEY
                     OPENAI_API_KEY = openai_key
                     openai.api_key = openai_key
                     st.sidebar.success("✅ OpenAI API Key saved!")
@@ -152,7 +153,6 @@ def run_dashboard():
     else:
         st.sidebar.success("✅ API Keys configured!")
         if st.sidebar.button("🔄 Reset API Keys"):
-            global OPENAI_API_KEY
             OPENAI_API_KEY = 'demo_key'
             openai.api_key = None
             st.rerun()
