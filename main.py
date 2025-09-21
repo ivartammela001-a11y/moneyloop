@@ -375,26 +375,64 @@ def run_dashboard():
         with st.sidebar.expander("🔧 Configure API Keys", expanded=True):
             openai_key = st.text_input(
                 "OpenAI API Key", 
-                value="",
+                value=OPENAI_API_KEY if OPENAI_API_KEY != 'demo_key' else "",
                 type="password",
                 help="Get your API key from https://platform.openai.com/api-keys",
                 placeholder="sk-proj-..."
             )
             
-            if st.button("💾 Save API Keys"):
+            etsy_key = st.text_input(
+                "Etsy API Key", 
+                value=ETSY_API_KEY if ETSY_API_KEY != 'demo_key' else "",
+                type="password",
+                help="Get your API key from https://www.etsy.com/developers/",
+                placeholder="etsy_api_key..."
+            )
+            
+            gumroad_key = st.text_input(
+                "Gumroad API Key", 
+                value=GUMROAD_API_KEY if GUMROAD_API_KEY != 'demo_key' else "",
+                type="password",
+                help="Get your API key from https://gumroad.com/settings/advanced",
+                placeholder="gumroad_api_key..."
+            )
+            
+            canva_key = st.text_input(
+                "Canva API Key (Optional)", 
+                value=CANVA_API_KEY if CANVA_API_KEY != 'demo_key' else "",
+                type="password",
+                help="Get your API key from https://www.canva.com/developers/",
+                placeholder="canva_api_key..."
+            )
+            
+            if st.button("💾 Save All API Keys"):
                 if openai_key:
-                    # Update the global variable
+                    # Update the global variables
+                    global OPENAI_API_KEY, ETSY_API_KEY, GUMROAD_API_KEY, CANVA_API_KEY
                     OPENAI_API_KEY = openai_key
-                    openai.api_key = openai_key
-                    st.sidebar.success("✅ OpenAI API Key saved!")
+                    ETSY_API_KEY = etsy_key
+                    GUMROAD_API_KEY = gumroad_key
+                    CANVA_API_KEY = canva_key
+                    st.sidebar.success("✅ All API Keys saved!")
                     st.rerun()
                 else:
-                    st.sidebar.error("Please enter a valid OpenAI API Key")
+                    st.sidebar.error("Please enter at least the OpenAI API Key")
     else:
         st.sidebar.success("✅ API Keys configured!")
-        if st.sidebar.button("🔄 Reset API Keys"):
+        
+        # Show current API key status
+        st.sidebar.write("**Current Keys:**")
+        st.sidebar.write(f"OpenAI: {'✅' if OPENAI_API_KEY != 'demo_key' else '❌'}")
+        st.sidebar.write(f"Etsy: {'✅' if ETSY_API_KEY != 'demo_key' else '❌'}")
+        st.sidebar.write(f"Gumroad: {'✅' if GUMROAD_API_KEY != 'demo_key' else '❌'}")
+        st.sidebar.write(f"Canva: {'✅' if CANVA_API_KEY != 'demo_key' else '❌'}")
+        
+        if st.sidebar.button("🔄 Reset All API Keys"):
+            global OPENAI_API_KEY, ETSY_API_KEY, GUMROAD_API_KEY, CANVA_API_KEY
             OPENAI_API_KEY = 'demo_key'
-            openai.api_key = None
+            ETSY_API_KEY = 'demo_key'
+            GUMROAD_API_KEY = 'demo_key'
+            CANVA_API_KEY = 'demo_key'
             st.rerun()
     
     # Main Dashboard Content
