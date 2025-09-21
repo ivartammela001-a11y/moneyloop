@@ -24,8 +24,7 @@ CANVA_API_KEY = os.getenv('CANVA_API_KEY', 'demo_key')
 ETSY_API_KEY = os.getenv('ETSY_API_KEY', 'demo_key')
 GUMROAD_API_KEY = os.getenv('GUMROAD_API_KEY', 'demo_key')
 
-if OPENAI_API_KEY and OPENAI_API_KEY != 'demo_key':
-    openai.api_key = OPENAI_API_KEY
+# OpenAI API key is now handled in the individual functions
 
 # -------------------------
 # Logging
@@ -62,13 +61,15 @@ next_layer = lambda capital: 'Layer 1' if capital<250 else ('Layer 2' if capital
 def generate_ai_text(prompt):
     if OPENAI_API_KEY and OPENAI_API_KEY != 'demo_key':
         try:
-            response = openai.ChatCompletion.create(
+            from openai import OpenAI
+            client = OpenAI(api_key=OPENAI_API_KEY)
+            response = client.chat.completions.create(
                 model="gpt-4",
                 messages=[{"role": "user", "content": prompt}],
                 max_tokens=500,
                 temperature=0.7
             )
-            return response['choices'][0]['message']['content']
+            return response.choices[0].message.content
         except Exception as e:
             logging.error(f"OpenAI API error: {e}")
             return f"Error generating content: {str(e)}"
@@ -78,10 +79,17 @@ def generate_ai_text(prompt):
 def generate_ai_image(prompt):
     if OPENAI_API_KEY and OPENAI_API_KEY != 'demo_key':
         try:
-            response = openai.Image.create(prompt=prompt, n=1, size="1024x1024")
-            return response['data'][0]['url']
-        except:
-            pass
+            from openai import OpenAI
+            client = OpenAI(api_key=OPENAI_API_KEY)
+            response = client.images.generate(
+                prompt=prompt,
+                n=1,
+                size="1024x1024"
+            )
+            return response.data[0].url
+        except Exception as e:
+            logging.error(f"OpenAI Image API error: {e}")
+            return "https://via.placeholder.com/1024x1024/4CAF50/FFFFFF?text=AI+Generated+Image"
     # Demo mode - return placeholder
     return "https://via.placeholder.com/1024x1024/4CAF50/FFFFFF?text=AI+Generated+Image"
 
