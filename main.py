@@ -383,9 +383,6 @@ def schedule_automation():
 # -------------------------
 
 if __name__ == "__main__":
-    # Uncomment one of the two options below:
-    # Option 1: Run Streamlit Dashboard
+    # This will only run when main.py is executed directly
+    # For Streamlit Cloud, use streamlit_app.py instead
     run_dashboard()
-
-    # Option 2: Run recurring simulation in production
-    # run_recurring(simulation_interval_hours=24)
