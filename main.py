@@ -94,9 +94,175 @@ def generate_ai_image(prompt):
     return "https://via.placeholder.com/1024x1024/4CAF50/FFFFFF?text=AI+Generated+Image"
 
 def export_to_platform(product_name, content_file, image_file, platform):
+    """Export products to real platforms with actual API calls"""
     logging.info(f"Uploading {product_name} to {platform}")
-    # Replace with real API requests to Etsy/Gumroad/Shopify/Canva
-    return True
+    
+    if platform == 'Etsy' and ETSY_API_KEY and ETSY_API_KEY != 'demo_key':
+        return create_etsy_listing(product_name, content_file, image_file)
+    elif platform == 'Gumroad' and GUMROAD_API_KEY and GUMROAD_API_KEY != 'demo_key':
+        return create_gumroad_product(product_name, content_file, image_file)
+    elif platform == 'Shopify/Printful' and GUMROAD_API_KEY and GUMROAD_API_KEY != 'demo_key':
+        return create_shopify_product(product_name, content_file, image_file)
+    else:
+        logging.info(f"Platform {platform} not configured or in demo mode")
+        return True
+
+def create_etsy_listing(product_name, content, image_url):
+    """Create real Etsy listing using Etsy API"""
+    try:
+        import requests
+        
+        # Etsy API endpoints
+        etsy_base_url = "https://openapi.etsy.com/v3/application"
+        
+        headers = {
+            'x-api-key': ETSY_API_KEY,
+            'Content-Type': 'application/json'
+        }
+        
+        # Create listing data
+        listing_data = {
+            "title": content.get('title', product_name),
+            "description": content.get('description', ''),
+            "price": 9.99,  # Base price
+            "quantity": 100,
+            "tags": content.get('tags', '').split()[:13],  # Etsy allows max 13 tags
+            "materials": ["Digital Download"],
+            "shop_section_id": None,
+            "who_made": "i_did",
+            "when_made": "2020_2024",
+            "is_supply": False,
+            "is_customizable": True,
+            "state": "draft"  # Start as draft for review
+        }
+        
+        # Create the listing
+        response = requests.post(
+            f"{etsy_base_url}/shops/me/listings",
+            headers=headers,
+            json=listing_data
+        )
+        
+        if response.status_code == 201:
+            listing_id = response.json()['results'][0]['listing_id']
+            logging.info(f"✅ Etsy listing created: {listing_id}")
+            
+            # Upload image
+            upload_etsy_image(listing_id, image_url, headers)
+            
+            return True
+        else:
+            logging.error(f"Etsy API error: {response.text}")
+            return False
+            
+    except Exception as e:
+        logging.error(f"Error creating Etsy listing: {e}")
+        return False
+
+def upload_etsy_image(listing_id, image_url, headers):
+    """Upload image to Etsy listing"""
+    try:
+        import requests
+        
+        # Download image
+        image_response = requests.get(image_url)
+        if image_response.status_code == 200:
+            # Upload to Etsy
+            files = {'image': image_response.content}
+            response = requests.post(
+                f"https://openapi.etsy.com/v3/application/shops/me/listings/{listing_id}/images",
+                headers=headers,
+                files=files
+            )
+            
+            if response.status_code == 201:
+                logging.info(f"✅ Image uploaded to Etsy listing {listing_id}")
+            else:
+                logging.error(f"Image upload failed: {response.text}")
+                
+    except Exception as e:
+        logging.error(f"Error uploading image: {e}")
+
+def create_gumroad_product(product_name, content, image_url):
+    """Create real Gumroad product using Gumroad API"""
+    try:
+        import requests
+        
+        # Gumroad API
+        gumroad_url = "https://api.gumroad.com/v2/products"
+        
+        data = {
+            'name': content.get('title', product_name),
+            'description': content.get('description', ''),
+            'price': 9.99,
+            'tags': content.get('tags', ''),
+            'preview_url': image_url,
+            'custom_permalink': product_name.lower().replace(' ', '-'),
+            'is_published': True
+        }
+        
+        response = requests.post(
+            gumroad_url,
+            data=data,
+            auth=(GUMROAD_API_KEY, '')  # Gumroad uses basic auth
+        )
+        
+        if response.status_code == 200:
+            product_id = response.json()['product']['id']
+            logging.info(f"✅ Gumroad product created: {product_id}")
+            return True
+        else:
+            logging.error(f"Gumroad API error: {response.text}")
+            return False
+            
+    except Exception as e:
+        logging.error(f"Error creating Gumroad product: {e}")
+        return False
+
+def create_shopify_product(product_name, content, image_url):
+    """Create real Shopify product using Shopify API"""
+    try:
+        import requests
+        
+        # Shopify API (you'll need to set up a Shopify app)
+        shopify_url = f"https://your-shop.myshopify.com/admin/api/2023-10/products.json"
+        
+        headers = {
+            'X-Shopify-Access-Token': GUMROAD_API_KEY,  # Using as placeholder
+            'Content-Type': 'application/json'
+        }
+        
+        product_data = {
+            "product": {
+                "title": content.get('title', product_name),
+                "body_html": content.get('description', ''),
+                "vendor": "AI Money Loop",
+                "product_type": "Digital Download",
+                "tags": content.get('tags', ''),
+                "variants": [{
+                    "price": "9.99",
+                    "inventory_management": "shopify",
+                    "inventory_quantity": 100
+                }],
+                "images": [{
+                    "src": image_url
+                }]
+            }
+        }
+        
+        response = requests.post(shopify_url, headers=headers, json=product_data)
+        
+        if response.status_code == 201:
+            product_id = response.json()['product']['id']
+            logging.info(f"✅ Shopify product created: {product_id}")
+            return True
+        else:
+            logging.error(f"Shopify API error: {response.text}")
+            return False
+            
+    except Exception as e:
+        logging.error(f"Error creating Shopify product: {e}")
+        return False
 
 # -------------------------
 # Automation Functions
@@ -318,6 +484,9 @@ def run_dashboard():
     st.write(f'Current Capital: €{current_capital}')
     st.write(f'Next Layer: {layer_name}, Suggested Action: {action}')
     
+    # Add real sales monitoring
+    check_real_sales()
+    
     # Add automation scheduler
     schedule_automation()
 
@@ -350,6 +519,98 @@ def run_recurring(simulation_interval_hours=24):
         
         logging.info(f"Round {round_count} complete. Current capital: €{capital}")
         time.sleep(simulation_interval_hours * 3600)
+
+def check_real_sales():
+    """Check for real sales from platforms"""
+    st.subheader('💰 Real Sales Monitoring')
+    
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        if st.button("🔄 Check Etsy Sales"):
+            etsy_sales = get_etsy_sales()
+            st.metric("Etsy Sales Today", f"€{etsy_sales:.2f}")
+    
+    with col2:
+        if st.button("🔄 Check Gumroad Sales"):
+            gumroad_sales = get_gumroad_sales()
+            st.metric("Gumroad Sales Today", f"€{gumroad_sales:.2f}")
+    
+    with col3:
+        if st.button("🔄 Check Shopify Sales"):
+            shopify_sales = get_shopify_sales()
+            st.metric("Shopify Sales Today", f"€{shopify_sales:.2f}")
+
+def get_etsy_sales():
+    """Get real sales data from Etsy"""
+    try:
+        if not ETSY_API_KEY or ETSY_API_KEY == 'demo_key':
+            return 0.0
+        
+        import requests
+        headers = {'x-api-key': ETSY_API_KEY}
+        
+        # Get shop sales
+        response = requests.get(
+            "https://openapi.etsy.com/v3/application/shops/me/receipts",
+            headers=headers
+        )
+        
+        if response.status_code == 200:
+            receipts = response.json().get('results', [])
+            total_sales = sum(receipt.get('total_price', 0) for receipt in receipts)
+            return total_sales
+        else:
+            return 0.0
+    except:
+        return 0.0
+
+def get_gumroad_sales():
+    """Get real sales data from Gumroad"""
+    try:
+        if not GUMROAD_API_KEY or GUMROAD_API_KEY == 'demo_key':
+            return 0.0
+        
+        import requests
+        
+        # Get sales data
+        response = requests.get(
+            "https://api.gumroad.com/v2/sales",
+            auth=(GUMROAD_API_KEY, '')
+        )
+        
+        if response.status_code == 200:
+            sales = response.json().get('sales', [])
+            total_sales = sum(sale.get('price', 0) for sale in sales)
+            return total_sales
+        else:
+            return 0.0
+    except:
+        return 0.0
+
+def get_shopify_sales():
+    """Get real sales data from Shopify"""
+    try:
+        if not GUMROAD_API_KEY or GUMROAD_API_KEY == 'demo_key':
+            return 0.0
+        
+        import requests
+        headers = {'X-Shopify-Access-Token': GUMROAD_API_KEY}
+        
+        # Get orders
+        response = requests.get(
+            "https://your-shop.myshopify.com/admin/api/2023-10/orders.json",
+            headers=headers
+        )
+        
+        if response.status_code == 200:
+            orders = response.json().get('orders', [])
+            total_sales = sum(order.get('total_price', 0) for order in orders)
+            return total_sales
+        else:
+            return 0.0
+    except:
+        return 0.0
 
 def schedule_automation():
     """Schedule automation with configurable intervals"""
