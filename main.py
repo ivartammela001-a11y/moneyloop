@@ -354,7 +354,7 @@ def suggest_next_action(capital):
 # -------------------------
 
 def run_dashboard():
-    global OPENAI_API_KEY
+    global OPENAI_API_KEY, ETSY_API_KEY, GUMROAD_API_KEY, CANVA_API_KEY
     
     st.title('💰 AI Money Loop Dashboard')
     st.markdown("---")
