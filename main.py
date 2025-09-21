@@ -23,6 +23,7 @@ OPENAI_API_KEY = os.getenv('OPENAI_API_KEY', 'demo_key')
 CANVA_API_KEY = os.getenv('CANVA_API_KEY', 'demo_key')
 ETSY_API_KEY = os.getenv('ETSY_API_KEY', 'demo_key')
 GUMROAD_API_KEY = os.getenv('GUMROAD_API_KEY', 'demo_key')
+SHOPIFY_API_KEY = os.getenv('SHOPIFY_API_KEY', 'demo_key')
 
 # OpenAI API key is now handled in the individual functions
 
@@ -104,7 +105,7 @@ def export_to_platform(product_name, content_file, image_file, platform):
         logging.info(f"Creating Gumroad product for {product_name}")
         logging.info(f"Gumroad API Key: {GUMROAD_API_KEY[:10]}...")
         return create_gumroad_product(product_name, content_file, image_file)
-    elif platform == 'Shopify/Printful' and GUMROAD_API_KEY and GUMROAD_API_KEY != 'demo_key':
+    elif platform == 'Shopify/Printful' and SHOPIFY_API_KEY and SHOPIFY_API_KEY != 'demo_key':
         logging.info(f"Creating Shopify product for {product_name}")
         return create_shopify_product(product_name, content_file, image_file)
     else:
@@ -256,7 +257,7 @@ def create_shopify_product(product_name, content, image_url):
         shopify_url = f"https://your-shop.myshopify.com/admin/api/2023-10/products.json"
         
         headers = {
-            'X-Shopify-Access-Token': GUMROAD_API_KEY,  # Using as placeholder
+            'X-Shopify-Access-Token': SHOPIFY_API_KEY,  # Using Shopify API key
             'Content-Type': 'application/json'
         }
         
@@ -407,7 +408,7 @@ def suggest_next_action(capital):
 # -------------------------
 
 def run_dashboard():
-    global OPENAI_API_KEY, ETSY_API_KEY, GUMROAD_API_KEY, CANVA_API_KEY
+    global OPENAI_API_KEY, ETSY_API_KEY, GUMROAD_API_KEY, CANVA_API_KEY, SHOPIFY_API_KEY
     
     # Load API keys from session state if available
     if 'openai_key' in st.session_state:
@@ -418,6 +419,8 @@ def run_dashboard():
         GUMROAD_API_KEY = st.session_state.gumroad_key
     if 'canva_key' in st.session_state:
         CANVA_API_KEY = st.session_state.canva_key
+    if 'shopify_key' in st.session_state:
+        SHOPIFY_API_KEY = st.session_state.shopify_key
     
     st.title('💰 AI Money Loop Dashboard')
     st.markdown("---")
@@ -430,6 +433,7 @@ def run_dashboard():
     st.sidebar.write(f"OpenAI: {OPENAI_API_KEY[:10] if OPENAI_API_KEY else 'None'}...")
     st.sidebar.write(f"Gumroad: {GUMROAD_API_KEY[:10] if GUMROAD_API_KEY else 'None'}...")
     st.sidebar.write(f"Etsy: {ETSY_API_KEY[:10] if ETSY_API_KEY else 'None'}...")
+    st.sidebar.write(f"Shopify: {SHOPIFY_API_KEY[:10] if SHOPIFY_API_KEY else 'None'}...")
     
     # Welcome message for first-time users
     if not api_keys_set:
@@ -473,6 +477,14 @@ def run_dashboard():
                         help="Get your API key from https://www.canva.com/developers/",
                         placeholder="canva_api_key..."
                     )
+                    
+                    shopify_key = st.text_input(
+                        "Shopify API Key (Optional)", 
+                        value=st.session_state.get('shopify_key', ''),
+                        type="password",
+                        help="Get your API key from https://partners.shopify.com/",
+                        placeholder="shopify_api_key..."
+                    )
             
                     if st.button("💾 Save All API Keys"):
                         if openai_key:
@@ -481,12 +493,14 @@ def run_dashboard():
                             ETSY_API_KEY = etsy_key
                             GUMROAD_API_KEY = gumroad_key
                             CANVA_API_KEY = canva_key
+                            SHOPIFY_API_KEY = shopify_key
                             
                             # Also save to session state for persistence
                             st.session_state.openai_key = openai_key
                             st.session_state.etsy_key = etsy_key
                             st.session_state.gumroad_key = gumroad_key
                             st.session_state.canva_key = canva_key
+                            st.session_state.shopify_key = shopify_key
                             
                             st.sidebar.success("✅ All API Keys saved!")
                             st.rerun()
@@ -501,12 +515,14 @@ def run_dashboard():
         st.sidebar.write(f"Etsy: {'✅' if ETSY_API_KEY != 'demo_key' else '❌'}")
         st.sidebar.write(f"Gumroad: {'✅' if GUMROAD_API_KEY != 'demo_key' else '❌'}")
         st.sidebar.write(f"Canva: {'✅' if CANVA_API_KEY != 'demo_key' else '❌'}")
+        st.sidebar.write(f"Shopify: {'✅' if SHOPIFY_API_KEY != 'demo_key' else '❌'}")
         
         if st.sidebar.button("🔄 Reset All API Keys"):
             OPENAI_API_KEY = 'demo_key'
             ETSY_API_KEY = 'demo_key'
             GUMROAD_API_KEY = 'demo_key'
             CANVA_API_KEY = 'demo_key'
+            SHOPIFY_API_KEY = 'demo_key'
             st.rerun()
     
     # Main Dashboard Content
@@ -816,11 +832,11 @@ def get_gumroad_sales():
 def get_shopify_sales():
     """Get real sales data from Shopify"""
     try:
-        if not GUMROAD_API_KEY or GUMROAD_API_KEY == 'demo_key':
+        if not SHOPIFY_API_KEY or SHOPIFY_API_KEY == 'demo_key':
             return 0.0
         
         import requests
-        headers = {'X-Shopify-Access-Token': GUMROAD_API_KEY}
+        headers = {'X-Shopify-Access-Token': SHOPIFY_API_KEY}
         
         # Get orders
         response = requests.get(
