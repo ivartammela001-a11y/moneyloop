@@ -114,12 +114,64 @@ def suggest_next_action(capital):
 # -------------------------
 
 def run_dashboard():
-    st.title('AI Money Loop Dashboard')
-    if st.button('Simulate Sales'):
-        for layer in investment_tracker:
-            profit = simulate_layer(layer)
-            suggest_next_action(profit)
-        st.success('Sales simulation complete!')
+    st.title('💰 AI Money Loop Dashboard')
+    st.markdown("---")
+    
+    # Welcome message for first-time users
+    if not (OPENAI_API_KEY and OPENAI_API_KEY != 'demo_key'):
+        st.info("🎯 **Welcome to AI Money Loop!** This system automates digital product creation and sales across multiple platforms. Configure your API keys in the sidebar to unlock full AI functionality.")
+    
+    # API Keys Configuration Section
+    st.sidebar.header('🔑 API Configuration')
+    
+    # Check if API keys are already set
+    api_keys_set = OPENAI_API_KEY and OPENAI_API_KEY != 'demo_key'
+    
+    if not api_keys_set:
+        st.sidebar.warning('⚠️ No API keys detected. Enter your keys below for full functionality.')
+        
+        with st.sidebar.expander("🔧 Configure API Keys", expanded=True):
+            openai_key = st.text_input(
+                "OpenAI API Key", 
+                value="",
+                type="password",
+                help="Get your API key from https://platform.openai.com/api-keys",
+                placeholder="sk-proj-..."
+            )
+            
+            if st.button("💾 Save API Keys"):
+                if openai_key:
+                    # Update the global variable
+                    global OPENAI_API_KEY
+                    OPENAI_API_KEY = openai_key
+                    openai.api_key = openai_key
+                    st.sidebar.success("✅ OpenAI API Key saved!")
+                    st.rerun()
+                else:
+                    st.sidebar.error("Please enter a valid OpenAI API Key")
+    else:
+        st.sidebar.success("✅ API Keys configured!")
+        if st.sidebar.button("🔄 Reset API Keys"):
+            global OPENAI_API_KEY
+            OPENAI_API_KEY = 'demo_key'
+            openai.api_key = None
+            st.rerun()
+    
+    # Main Dashboard Content
+    col1, col2 = st.columns([2, 1])
+    
+    with col1:
+        if st.button('🚀 Simulate Sales', type="primary"):
+            for layer in investment_tracker:
+                profit = simulate_layer(layer)
+                suggest_next_action(profit)
+            st.success('Sales simulation complete!')
+    
+    with col2:
+        if api_keys_set:
+            st.success("🤖 AI Mode: Real API calls")
+        else:
+            st.info("🎭 Demo Mode: Simulated responses")
 
     df_tracker = pd.DataFrame(investment_tracker)
     df_tracker['ROI (%)'] = ((df_tracker['actual_profit'] - df_tracker['starting_capital']) / df_tracker['starting_capital'] * 100).round(2)
